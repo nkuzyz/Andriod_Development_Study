@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">ZyzFirstAndroid</string>
+    <string name="roll">Roll</string>
+    <string name="roll_text01">roll_text01</string>
+    <string name="roll_text02">roll_text02</string>
+    <string name="dice_value">roll</string>
+</resources>
