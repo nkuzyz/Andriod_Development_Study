@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">AdDemo</string>
+    <string name="record_button">RECORD</string>
+    <string name="stop_button">STOP</string>
+</resources>
