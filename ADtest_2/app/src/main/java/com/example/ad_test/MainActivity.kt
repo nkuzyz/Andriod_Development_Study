@@ -24,8 +24,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var videoCaptureLauncher: ActivityResultLauncher<Intent>
     private lateinit var videoView: VideoView // 添加视频视图成员变量
     private lateinit var sensorManagerHelper: SensorManagerHelper
-//    private lateinit var cameraManagerHelper: CameraManagerHelper
-
+    private lateinit var cameraManagerHelper: CameraManagerHelper
+    private lateinit var permissionsManager: PermissionsManager
 
     private var recordingStartTime: Long = 0
 
@@ -38,7 +38,19 @@ class MainActivity : ComponentActivity() {
 
         sensorManagerHelper = SensorManagerHelper(this)
         // 示例：创建文件并注册传感器监听
-//        cameraManagerHelper = CameraManagerHelper(this)
+        cameraManagerHelper = CameraManagerHelper(this)
+
+        // 获得权限
+        permissionsManager = PermissionsManager(this)
+
+        if (!permissionsManager.allPermissionsGranted()) {
+            permissionsManager.requestPermissions()
+        } else {
+            // 执行需要权限的操作
+        }
+        //打开摄像头预览
+
+
 
 
         videoCaptureLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -61,7 +73,17 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        permissionsManager.handlePermissionsResult(requestCode, permissions, grantResults,
+            onGranted = {
+                // 所有权限已被授予，继续执行需要权限的操作
+            },
+            onDenied = {
+                // 用户拒绝了一些权限，可以在这里处理权限被拒绝的情况
+            }
+        )
+    }
 
     private fun requestCameraPermission() {
         when {
