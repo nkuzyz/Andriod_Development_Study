@@ -46,15 +46,18 @@ class CameraManagerHelper (private val context: Context, private val lifecycleOw
                 it.setSurfaceProvider(previewView.surfaceProvider)
             }
 
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-            // 创建 QualitySelector，这里选择最高支持的质量
+
+//            // 创建 QualitySelector，这里选择最高支持的质量
             val qualitySelector = QualitySelector.from(Quality.HIGHEST, FallbackStrategy.higherQualityOrLowerThan(Quality.SD))
-
+//
             val recorder = Recorder.Builder()
                 .setQualitySelector(qualitySelector)
                 .build()
             videoCapture = VideoCapture.withOutput(recorder)
+
+            // Select back camera as a default
+            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
             try {
                 cameraProvider.unbindAll() // 解除所有之前的绑定
@@ -68,6 +71,10 @@ class CameraManagerHelper (private val context: Context, private val lifecycleOw
     }
 
     fun startRecording() {
+
+//        val videoCapture = videoCapture ?: return
+//        viewBinding.videoCaptureButton.isEnabled = false
+
         // 创建MediaStore的ContentValues，用于视频文件的保存
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis()))
