@@ -21,6 +21,10 @@ class SensorManagerHelper(private val context: Context) {
     private lateinit var accelerometerFileUri: Uri
     private lateinit var gyroscopeFileUri: Uri
     private lateinit var magnetometerFileUri: Uri
+    private var addHeaderAcc: Boolean = true
+    private var addHeaderGyro: Boolean = true
+    private var addHeaderMag: Boolean = true
+
 
     init {
     }
@@ -33,9 +37,13 @@ class SensorManagerHelper(private val context: Context) {
         // 创建数据文件
         //得到时间戳
 
-        accelerometerFileUri = createFileForSensor("accelerometer-test.txt")
-        gyroscopeFileUri = createFileForSensor("gyroscope-test.txt")
-        magnetometerFileUri = createFileForSensor("magnetometer-test.txt")
+        accelerometerFileUri = createFileForSensor("accelerometer.csv")
+        gyroscopeFileUri = createFileForSensor("gyroscope.csv")
+        magnetometerFileUri = createFileForSensor("magnetometer.csv")
+
+        addHeaderAcc = true
+        addHeaderGyro = true
+        addHeaderMag = true
 
     }
 
@@ -54,7 +62,7 @@ class SensorManagerHelper(private val context: Context) {
     fun createFileForSensor(fileName: String): Uri {
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-            put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+            put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
             }
@@ -67,6 +75,14 @@ class SensorManagerHelper(private val context: Context) {
     fun writeDataToFileAcc(data: String) {
         try {
             context.contentResolver.openOutputStream(accelerometerFileUri, "wa")?.use { outputStream ->
+                if (addHeaderAcc) {
+                    // 只在首次写入时添加标题行
+                    val header = "Time,X-axis,Y-axis,Z-axis\n"
+                    outputStream.write(header.toByteArray())
+                    addHeaderAcc = false
+                }
+                // 假设data字符串是以逗号分隔的x,y,z值
+//                val csvFormattedString = "$data" // 在每条记录后添加换行符
                 outputStream.write(data.toByteArray())
             }
         } catch (e: IOException) {
@@ -76,6 +92,14 @@ class SensorManagerHelper(private val context: Context) {
     fun writeDataToFileGyro(data: String) {
         try {
             context.contentResolver.openOutputStream(gyroscopeFileUri, "wa")?.use { outputStream ->
+                if (addHeaderGyro) {
+                    // 只在首次写入时添加标题行
+                    val header = "Time,X-axis,Y-axis,Z-axis\n"
+                    outputStream.write(header.toByteArray())
+                    addHeaderGyro = false
+                }
+                // 假设data字符串是以逗号分隔的x,y,z值
+//                val csvFormattedString = "$data\n" // 在每条记录后添加换行符
                 outputStream.write(data.toByteArray())
             }
         } catch (e: IOException) {
@@ -85,6 +109,14 @@ class SensorManagerHelper(private val context: Context) {
     fun writeDataToFileMag(data: String) {
         try {
             context.contentResolver.openOutputStream(magnetometerFileUri, "wa")?.use { outputStream ->
+                if (addHeaderMag) {
+                    // 只在首次写入时添加标题行
+                    val header = "Time,X-axis,Y-axis,Z-axis\n"
+                    outputStream.write(header.toByteArray())
+                    addHeaderMag = false
+                }
+                // 假设data字符串是以逗号分隔的x,y,z值
+//                val csvFormattedString = "$data\n" // 在每条记录后添加换行符
                 outputStream.write(data.toByteArray())
             }
         } catch (e: IOException) {

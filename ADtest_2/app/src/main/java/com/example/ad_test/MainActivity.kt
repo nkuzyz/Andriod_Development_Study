@@ -201,7 +201,7 @@ class MainActivity : AppCompatActivity() {
             if (recordingStartTime > 0) {
                 lifecycleScope.launch(Dispatchers.Default) { // 在后台线程处理数据
                     val relativeTimeMillis = System.currentTimeMillis() - recordingStartTime
-                    val dataString = "${event.values.joinToString(", ")}, Relative Timestamp: ${relativeTimeMillis}\n"
+                    val dataString = "${relativeTimeMillis},${event.values.joinToString(",")}\n"
 
                     when (event.sensor.type) {
                         Sensor.TYPE_ACCELEROMETER -> sensorManagerHelper.writeDataToFileAcc(dataString)
