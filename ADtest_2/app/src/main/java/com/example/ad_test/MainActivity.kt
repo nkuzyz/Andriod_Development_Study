@@ -48,6 +48,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var sensorManagerHelper: SensorManagerHelper
     private var recordingStartTime: Long = 0
     private var recordingEndTime: Long = 0
+//    private var latestAccData: FloatArray? = null
+//    private var latestGyroData: FloatArray? = null
+//    private var latestMagData: FloatArray? = null
 
 
     companion object {
@@ -209,7 +212,9 @@ class MainActivity : AppCompatActivity() {
                         Sensor.TYPE_MAGNETIC_FIELD -> sensorManagerHelper.writeDataToFileMag(dataString)
                     }
                 }
+
             }
+
         }
 
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
