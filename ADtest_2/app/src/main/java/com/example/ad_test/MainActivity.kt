@@ -17,12 +17,15 @@ import android.widget.Button
 import android.widget.VideoView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 
 
 class MainActivity : ComponentActivity() {
-    private lateinit var videoCaptureLauncher: ActivityResultLauncher<Intent>
-    private lateinit var videoView: VideoView // 添加视频视图成员变量
+    private lateinit var previewView: PreviewView // 添加视频视图成员变量
     private lateinit var sensorManagerHelper: SensorManagerHelper
     private lateinit var cameraManagerHelper: CameraManagerHelper
     private lateinit var permissionsManager: PermissionsManager
@@ -34,11 +37,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        videoView = findViewById(R.id.videoView)
-
+        previewView = findViewById(R.id.previewView)
+        //注册传感器类
         sensorManagerHelper = SensorManagerHelper(this)
-        // 示例：创建文件并注册传感器监听
-        cameraManagerHelper = CameraManagerHelper(this)
+        //注册相机类
+        cameraManagerHelper = CameraManagerHelper(this, this, previewView)
 
         // 获得权限
         permissionsManager = PermissionsManager(this)
@@ -49,93 +52,70 @@ class MainActivity : ComponentActivity() {
             // 执行需要权限的操作
         }
         //打开摄像头预览
+        cameraManagerHelper.startCamera()
 
-
-
-
-        videoCaptureLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == Activity.RESULT_OK) {
-                val videoUri: Uri? = result.data?.data
-                videoUri?.let {
-                    videoView.setVideoURI(it)
-                    videoView.start()
-                }
-            }
-
-            // 停止监听传感器数据
-            sensorManagerHelper.stopSensorListener(sensorEventListener)
-        }
-
-
+        //按钮设置
         val recordButton: Button = findViewById(R.id.record)
         recordButton.setOnClickListener {
-            requestCameraPermission()
-        }
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        permissionsManager.handlePermissionsResult(requestCode, permissions, grantResults,
-            onGranted = {
-                // 所有权限已被授予，继续执行需要权限的操作
-            },
-            onDenied = {
-                // 用户拒绝了一些权限，可以在这里处理权限被拒绝的情况
-            }
-        )
-    }
-
-    private fun requestCameraPermission() {
-        when {
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED -> {
-                // 权限已经被授予，继续您的操作
-                startVideoRecording()
+//            requestCameraPermission()
+            if (cameraManagerHelper.isRecording) {
+                cameraManagerHelper.stopRecording()
+                recordButton.text = "RECORD"
+                sensorManagerHelper.stopSensorListener(sensorEventListener)
+            } else {
+                cameraManagerHelper.startRecording()
+                recordButton.text = "STOP"
                 sensorManagerHelper.startSensorListener(sensorEventListener) // 开始收集9轴数据
             }
-            shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) -> {
-                // 提供一个额外的说明，如果需要的话
-                // 之后再次请求权限
-                requestPermissionLauncher.launch(Manifest.permission.CAMERA)
-            }
-            else -> {
-                // 直接请求权限
-                requestPermissionLauncher.launch(Manifest.permission.CAMERA)
-            }
         }
     }
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-                // 权限被授予，继续操作
-            } else {
-                // 权限被拒绝，处理拒绝的情况
-            }
-        }
 
 
-    private fun startVideoRecording() {
-        recordingStartTime = System.currentTimeMillis()
-        getVideoUri()?.let { uri ->
-            val takeVideoIntent = Intent(MediaStore.ACTION_VIDEO_CAPTURE).apply {
-                putExtra(MediaStore.EXTRA_OUTPUT, uri) // 指定视频保存位置
-            }
-            videoCaptureLauncher.launch(takeVideoIntent)
-        }
-    }
-    private fun getVideoUri(): Uri? {
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, "video_${System.currentTimeMillis()}")
-            put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
-            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) { // 如果是Android 10及以上，还需要指定存储位置
-                put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES)
-            }
-        }
 
-        return contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues)
-    }
+//    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+//        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+//        permissionsManager.handlePermissionsResult(requestCode, permissions, grantResults,
+//            onGranted = {
+//                // 所有权限已被授予，继续执行需要权限的操作
+//            },
+//            onDenied = {
+//                // 用户拒绝了一些权限，可以在这里处理权限被拒绝的情况
+//            }
+//        )
+//    }
+//
+//    private fun requestCameraPermission() {
+//        when {
+//            ContextCompat.checkSelfPermission(
+//                this,
+//                Manifest.permission.CAMERA
+//            ) == PackageManager.PERMISSION_GRANTED -> {
+//                // 权限已经被授予，继续您的操作
+//                cameraManagerHelper.startRecording()//开始录像
+//                sensorManagerHelper.startSensorListener(sensorEventListener) // 开始收集9轴数据
+//            }
+//            shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) -> {
+//                // 提供一个额外的说明，如果需要的话
+//                // 之后再次请求权限
+//                requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+//            }
+//            else -> {
+//                // 直接请求权限
+//                requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+//            }
+//        }
+//    }
+//    private val requestPermissionLauncher =
+//        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+//            if (isGranted) {
+//                // 权限被授予，继续操作
+//            } else {
+//                // 权限被拒绝，处理拒绝的情况
+//            }
+//        }
+
+
+
 
     private val sensorEventListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {

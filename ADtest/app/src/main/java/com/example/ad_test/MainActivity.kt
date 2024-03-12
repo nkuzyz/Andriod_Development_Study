@@ -24,6 +24,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var videoCaptureLauncher: ActivityResultLauncher<Intent>
     private lateinit var videoView: VideoView // 添加视频视图成员变量
     private lateinit var sensorManagerHelper: SensorManagerHelper
+    private lateinit var permissionsManager: PermissionsManager
 //    private lateinit var cameraManagerHelper: CameraManagerHelper
 
 
@@ -39,6 +40,15 @@ class MainActivity : ComponentActivity() {
         sensorManagerHelper = SensorManagerHelper(this)
         // 示例：创建文件并注册传感器监听
 //        cameraManagerHelper = CameraManagerHelper(this)
+
+        // 获得权限
+        permissionsManager = PermissionsManager(this)
+
+        if (!permissionsManager.allPermissionsGranted()) {
+            permissionsManager.requestPermissions()
+        } else {
+            // 执行需要权限的操作
+        }
 
 
         videoCaptureLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -57,41 +67,14 @@ class MainActivity : ComponentActivity() {
 
         val recordButton: Button = findViewById(R.id.record)
         recordButton.setOnClickListener {
-            requestCameraPermission()
+            startVideoRecording()
+            sensorManagerHelper.startSensorListener(sensorEventListener) // 开始收集9轴数据
         }
     }
 
 
 
-    private fun requestCameraPermission() {
-        when {
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED -> {
-                // 权限已经被授予，继续您的操作
-                startVideoRecording()
-                sensorManagerHelper.startSensorListener(sensorEventListener) // 开始收集9轴数据
-            }
-            shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) -> {
-                // 提供一个额外的说明，如果需要的话
-                // 之后再次请求权限
-                requestPermissionLauncher.launch(Manifest.permission.CAMERA)
-            }
-            else -> {
-                // 直接请求权限
-                requestPermissionLauncher.launch(Manifest.permission.CAMERA)
-            }
-        }
-    }
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-                // 权限被授予，继续操作
-            } else {
-                // 权限被拒绝，处理拒绝的情况
-            }
-        }
+
 
 
     private fun startVideoRecording() {
