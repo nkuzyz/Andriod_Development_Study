@@ -123,14 +123,14 @@ class MainActivity : AppCompatActivity() {
                 when(recordEvent) {
                     is VideoRecordEvent.Start -> {
                         recordingStartTime = System.currentTimeMillis() // 记录开始时间
-                        sensorManagerHelper.startSensorListener(sensorEventListener)
+                        sensorManagerHelper.startSensorListener(sensorEventListener)// 启动传感器监听
                         viewBinding.videoCaptureButton.apply {
                             text = getString(R.string.stop_capture)
                             isEnabled = true
                         }
                     }
                     is VideoRecordEvent.Finalize -> {
-                        sensorManagerHelper.stopSensorListener(sensorEventListener)
+                        sensorManagerHelper.stopSensorListener(sensorEventListener)// 停止传感器监听
                         recordingEndTime = System.currentTimeMillis() // 记录结束时间
                         val recordingDuration = recordingEndTime - recordingStartTime // 计算录制时长
                         if (!recordEvent.hasError()) {
@@ -169,7 +169,7 @@ class MainActivity : AppCompatActivity() {
                 }
 //            val qualitySelector = QualitySelector.from(Quality.HIGHEST, FallbackStrategy.higherQualityOrLowerThan(Quality.SD))
             val recorder = Recorder.Builder()
-                .setQualitySelector(QualitySelector.from(Quality.LOWEST))
+                .setQualitySelector(QualitySelector.from(Quality.HD))
                 .build()
             videoCapture = VideoCapture.withOutput(recorder)
 
