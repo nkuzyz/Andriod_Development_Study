@@ -33,16 +33,17 @@ class SensorManagerHelper(private val context: Context) {
     private fun initializeSensors() {
         sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+//        gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
         magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
 
         // 创建数据文件
         //得到时间戳
 
-        accelerometerFileUri = createFileForSensor("accelerometer.csv")
-        gyroscopeFileUri = createFileForSensor("gyroscope.csv")
-        magnetometerFileUri = createFileForSensor("magnetometer.csv")
+//        accelerometerFileUri = createFileForSensor("accelerometer.csv")
+//        gyroscopeFileUri = createFileForSensor("gyroscope.csv")
+//        magnetometerFileUri = createFileForSensor("magnetometer.csv")
         fileUri = createFileForSensor("file.csv")
+        addHeaderForFile(fileUri)
 
         addHeaderAcc = true
         addHeaderGyro = true
@@ -54,7 +55,7 @@ class SensorManagerHelper(private val context: Context) {
     fun startSensorListener(sensorEventListener: SensorEventListener) {
         initializeSensors()
         sensorManager.registerListener(sensorEventListener, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
-        sensorManager.registerListener(sensorEventListener, gyroscope, SensorManager.SENSOR_DELAY_NORMAL)
+//        sensorManager.registerListener(sensorEventListener, gyroscope, SensorManager.SENSOR_DELAY_NORMAL)
         sensorManager.registerListener(sensorEventListener, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
 
     }
@@ -74,6 +75,32 @@ class SensorManagerHelper(private val context: Context) {
 
         val uri = context.contentResolver.insert(MediaStore.Files.getContentUri("external"), contentValues)
         return uri ?: throw IOException("Failed to create new MediaStore record.")
+    }
+
+    fun addHeaderForFile(file_uri: Uri){
+        try {
+            context.contentResolver.openOutputStream(file_uri, "wa")?.use { outputStream ->
+                if (addHeader) {
+                    // 只在首次写入时添加标题行
+                    val header = "Time,angle-z,angle-x,angle-y\n"
+                    outputStream.write(header.toByteArray())
+                    addHeader = false
+                }
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+    }
+
+    fun writeDataToFile(data: String) {
+        try {
+            context.contentResolver.openOutputStream(fileUri, "wa")?.use { outputStream ->
+//                 假设data字符串是以逗号分隔的x,y,z值
+                outputStream.write(data.toByteArray())
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
     }
 
     fun writeDataToFileAcc(data: String) {
@@ -127,23 +154,5 @@ class SensorManagerHelper(private val context: Context) {
             e.printStackTrace()
         }
     }
-    fun writeDataToFile(data: String) {
-        try {
-            context.contentResolver.openOutputStream(fileUri, "wa")?.use { outputStream ->
-//                if (addHeader) {
-//                    // 只在首次写入时添加标题行
-//                    val header = "Time,angles\n"
-//                    outputStream.write(header.toByteArray())
-//                    addHeader = false
-//                }
-                // 假设data字符串是以逗号分隔的x,y,z值
-//                val csvFormattedString = "$data\n" // 在每条记录后添加换行符
-                outputStream.write(data.toByteArray())
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-    }
-
 
 }
