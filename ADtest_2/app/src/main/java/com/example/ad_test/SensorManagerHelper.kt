@@ -25,6 +25,7 @@ class SensorManagerHelper(private val context: Context) {
     private var addHeaderAcc: Boolean = true
     private var addHeaderGyro: Boolean = true
     private var addHeaderMag: Boolean = true
+    private var addHeader: Boolean = true
 
 
     init {
@@ -46,6 +47,7 @@ class SensorManagerHelper(private val context: Context) {
         addHeaderAcc = true
         addHeaderGyro = true
         addHeaderMag = true
+        addHeader = true
 
     }
 
@@ -128,12 +130,12 @@ class SensorManagerHelper(private val context: Context) {
     fun writeDataToFile(data: String) {
         try {
             context.contentResolver.openOutputStream(fileUri, "wa")?.use { outputStream ->
-                if (addHeaderMag) {
-                    // 只在首次写入时添加标题行
-                    val header = "Time,X-axis,Y-axis,Z-axis\n"
-                    outputStream.write(header.toByteArray())
-                    addHeaderMag = false
-                }
+//                if (addHeader) {
+//                    // 只在首次写入时添加标题行
+//                    val header = "Time,angles\n"
+//                    outputStream.write(header.toByteArray())
+//                    addHeader = false
+//                }
                 // 假设data字符串是以逗号分隔的x,y,z值
 //                val csvFormattedString = "$data\n" // 在每条记录后添加换行符
                 outputStream.write(data.toByteArray())

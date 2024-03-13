@@ -2,10 +2,12 @@ package com.example.ad_test
 
 import android.Manifest
 import android.content.ContentValues
+import android.content.Context
 import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -31,6 +33,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.ad_test.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.lang.Math.toDegrees
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.ExecutorService
@@ -48,6 +51,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var sensorManagerHelper: SensorManagerHelper
     private var recordingStartTime: Long = 0
     private var recordingEndTime: Long = 0
+    private lateinit var sensorManager: SensorManager
 //    private var latestAccData: FloatArray? = null
 //    private var latestGyroData: FloatArray? = null
 //    private var latestMagData: FloatArray? = null
@@ -62,6 +66,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         viewBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(viewBinding.root)
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
         // Request camera permissions
         // 获得权限
@@ -197,20 +202,49 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
+        sensorManager.unregisterListener(sensorEventListener)
     }
 
     private val sensorEventListener = object : SensorEventListener {
+        val accelerometerValues = FloatArray(3)
+        val magneticValues = FloatArray(3)
         override fun onSensorChanged(event: SensorEvent) {
             if (recordingStartTime > 0) {
                 lifecycleScope.launch(Dispatchers.Default) { // 在后台线程处理数据
                     val relativeTimeMillis = System.currentTimeMillis() - recordingStartTime
-                    val dataString = "${relativeTimeMillis},${event.values.joinToString(",")}\n"
+//                    val dataString = "${relativeTimeMillis},${event.values.joinToString(",")}\n"
 
                     when (event.sensor.type) {
-                        Sensor.TYPE_ACCELEROMETER -> sensorManagerHelper.writeDataToFileAcc(dataString)
-                        Sensor.TYPE_GYROSCOPE -> sensorManagerHelper.writeDataToFileGyro(dataString)
-                        Sensor.TYPE_MAGNETIC_FIELD -> sensorManagerHelper.writeDataToFileMag(dataString)
+//                        Sensor.TYPE_ACCELEROMETER -> sensorManagerHelper.writeDataToFileAcc(dataString)
+//                        Sensor.TYPE_GYROSCOPE -> sensorManagerHelper.writeDataToFileGyro(dataString)
+//                        Sensor.TYPE_MAGNETIC_FIELD -> sensorManagerHelper.writeDataToFileMag(dataString)
+                        Sensor.TYPE_ACCELEROMETER -> {
+                            accelerometerValues[0] = event.values[0]
+                            accelerometerValues[1] =  event.values[2]
+                            accelerometerValues[2] = event.values[1]
+                        }
+                        Sensor.TYPE_MAGNETIC_FIELD -> {
+                            magneticValues[0] = event.values[0]
+                            magneticValues[1] = event.values[2]
+                            magneticValues[2] =  event.values[1]
+                        }
+
                     }
+                    val R = FloatArray(9)
+                    val values = FloatArray(3)
+                    SensorManager.getRotationMatrix(R, null, accelerometerValues, magneticValues)
+                    SensorManager.getOrientation(R, values)
+                    val angle = DoubleArray(3) // 创建一个双精度浮点数数组来存储转换后的角度值
+
+                    // 分别将values数组中的每个弧度值转换为度数
+                    angle[0] = toDegrees(values[0].toDouble()) // 方位角(Azimuth) 转换为度
+                    angle[1] = toDegrees(values[1].toDouble()) // 俯仰角(Pitch) 转换为度
+                    angle[2] = toDegrees(values[2].toDouble()) // 滚转角(Roll) 转换为度
+
+                    val angleString = "${relativeTimeMillis},${angle.joinToString(",")}\n"
+                    Log.d("MainActivity", "value[0] is ${angle.joinToString(",")}")
+                    sensorManagerHelper.writeDataToFile(angleString)
+
                 }
 
             }

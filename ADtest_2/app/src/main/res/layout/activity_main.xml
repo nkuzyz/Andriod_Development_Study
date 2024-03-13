@@ -10,7 +10,17 @@
     <androidx.camera.view.PreviewView
         android:id="@+id/viewFinder"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent" >
+
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="134dp"
+            android:layout_height="53dp"
+            android:layout_margin="100dp"
+            android:text="TextView"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toLeftOf="parent"/>
+    </androidx.camera.view.PreviewView>
 
     <Button
         android:id="@+id/image_capture_button"
