@@ -220,12 +220,12 @@ class MainActivity : AppCompatActivity() {
 //                        Sensor.TYPE_MAGNETIC_FIELD -> sensorManagerHelper.writeDataToFileMag(dataString)
                         Sensor.TYPE_ACCELEROMETER -> {
                             accelerometerValues[0] = event.values[0]
-                            accelerometerValues[1] =  event.values[2]
+                            accelerometerValues[1] =  -event.values[2]
                             accelerometerValues[2] = event.values[1]
                         }
                         Sensor.TYPE_MAGNETIC_FIELD -> {
                             magneticValues[0] = event.values[0]
-                            magneticValues[1] = event.values[2]
+                            magneticValues[1] = -event.values[2]
                             magneticValues[2] =  event.values[1]
                         }
 
