@@ -1,5 +1,7 @@
 package com.example.adv2.ui.notifications
 
+
+import androidx.compose.runtime.Composable
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
