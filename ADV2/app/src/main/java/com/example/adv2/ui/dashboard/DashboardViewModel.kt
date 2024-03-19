@@ -211,6 +211,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
                     // 分别将values数组中的每个弧度值转换为度数
                     angle[0] = Math.toDegrees(values[0].toDouble()) // 方位角(Azimuth) 转换为度
+                    if (angle[0]<0){
+                        angle[0] = angle[0]+360
+                    }
                     angle[1] = Math.toDegrees(values[1].toDouble()) // 俯仰角(Pitch) 转换为度
                     angle[2] = Math.toDegrees(values[2].toDouble()) // 滚转角(Roll) 转换为度
 
