@@ -221,7 +221,7 @@ private fun ChatBottomBar(navController: NavController,viewModel:NotificationsVi
                             )
                         )
                     Log.d(TAG, "发了 $editingText")
-                    viewModel.SendMessage(editingText)
+                    viewModel.SendMessageWithAzimuth(editingText)
                     editingText = ""
                 },
                 colors = ButtonDefaults.buttonColors(Color(0xff07c160)),

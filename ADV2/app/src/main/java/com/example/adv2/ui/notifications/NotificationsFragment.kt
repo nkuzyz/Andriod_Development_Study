@@ -21,8 +21,7 @@ import com.example.adv2.ui.theme.WechatDemoTheme
 class NotificationsFragment : Fragment() {
     private val dashboardViewModel:DashboardViewModel by activityViewModels()
     private val notificationsViewModel: NotificationsViewModel by activityViewModels()
-    private var newMessage: Message? = null
-    private var lastUploadResult: String? = null
+
     companion object {
         private const val TAG = "ZYZ"
     }
@@ -55,13 +54,24 @@ class NotificationsFragment : Fragment() {
         dashboardViewModel.uploadResult.observe(viewLifecycleOwner) { result ->
             //在viewmodel里操作list 列表加一条消息
             Log.d(TAG, "观察者回调触发，收到新值: $result")
-            if (lastUploadResult!=result){
+            Log.d(TAG,"old:${notificationsViewModel.getLastUploadResult()}")
+            if (notificationsViewModel.getLastUploadResult()!=result){
                 notificationsViewModel.addAssistantMessageString(result)
-                lastUploadResult = result
+                notificationsViewModel.updateLastUploadResult(result)
             }
         }
 //        Log.d(TAG, "观察者回调触发，收到新值: $dashboardViewModel.uploadResult")
 
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 重新注册传感器监听器
+        notificationsViewModel.registerSensorListeners()
+    }
+    override fun onPause() {
+        super.onPause()
+        notificationsViewModel.unregisterSensorListeners()
     }
 
 }
