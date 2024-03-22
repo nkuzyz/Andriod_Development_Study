@@ -63,7 +63,6 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
 
     private val sensorManagerHelper = SensorManagerHelper(application)
-    private val sensorManager = application.getSystemService(Application.SENSOR_SERVICE) as SensorManager
     private val accelerometerValues = FloatArray(3)
     private val magneticValues = FloatArray(3)
 
@@ -231,7 +230,6 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         recording?.stop()
         recording = null
         _recordingState.value = false
-        sensorManagerHelper.stopSensorListener(sensorEventListener)// 停止传感器监听
         Log.d(TAG, "Recording stopped.")
     }
 
@@ -242,7 +240,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 // 录制开始的逻辑
                 recordingStartTime = System.currentTimeMillis()
                 _recordingState.postValue(true)
-                csvUri = sensorManagerHelper.startSensorListener(sensorEventListener)// 启动传感器监听
+                csvUri = sensorManagerHelper.StartRecordingVideo() //创建要录制的文件
 
             }
             is VideoRecordEvent.Finalize -> {
@@ -267,44 +265,47 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val sensorEventListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
-            if (recordingStartTime > 0) {
-                viewModelScope.launch(Dispatchers.Default) {
-                    // Sensor data processing logic here
-                    // Similar to your existing logic
+            viewModelScope.launch(Dispatchers.Default) {
+                // Sensor data processing logic here
+                // Similar to your existing logic
+
+
+                when (event.sensor.type) {
+                    Sensor.TYPE_ACCELEROMETER -> {
+                        accelerometerValues[0] = event.values[0]
+                        accelerometerValues[1] =  -event.values[2]
+                        accelerometerValues[2] = event.values[1]
+                    }
+                    Sensor.TYPE_MAGNETIC_FIELD -> {
+                        magneticValues[0] = event.values[0]
+                        magneticValues[1] = -event.values[2]
+                        magneticValues[2] =  event.values[1]
+                    }
+
+                }
+                val R = FloatArray(9)
+                val values = FloatArray(3)
+                SensorManager.getRotationMatrix(R, null, accelerometerValues, magneticValues)
+                SensorManager.getOrientation(R, values)
+                val angle = DoubleArray(3) // 创建一个双精度浮点数数组来存储转换后的角度值
+
+                // 分别将values数组中的每个弧度值转换为度数
+                angle[0] = Math.toDegrees(values[0].toDouble()) // 方位角(Azimuth) 转换为度
+                if (angle[0]<0){
+                    angle[0] = angle[0]+360
+                }
+                angle[1] = Math.toDegrees(values[1].toDouble()) // 俯仰角(Pitch) 转换为度
+                angle[2] = Math.toDegrees(values[2].toDouble()) // 滚转角(Roll) 转换为度
+
+                if(_recordingState.value == true) {
                     val relativeTimeMillis = System.currentTimeMillis() - recordingStartTime
-
-                    when (event.sensor.type) {
-                        Sensor.TYPE_ACCELEROMETER -> {
-                            accelerometerValues[0] = event.values[0]
-                            accelerometerValues[1] =  -event.values[2]
-                            accelerometerValues[2] = event.values[1]
-                        }
-                        Sensor.TYPE_MAGNETIC_FIELD -> {
-                            magneticValues[0] = event.values[0]
-                            magneticValues[1] = -event.values[2]
-                            magneticValues[2] =  event.values[1]
-                        }
-
-                    }
-                    val R = FloatArray(9)
-                    val values = FloatArray(3)
-                    SensorManager.getRotationMatrix(R, null, accelerometerValues, magneticValues)
-                    SensorManager.getOrientation(R, values)
-                    val angle = DoubleArray(3) // 创建一个双精度浮点数数组来存储转换后的角度值
-
-                    // 分别将values数组中的每个弧度值转换为度数
-                    angle[0] = Math.toDegrees(values[0].toDouble()) // 方位角(Azimuth) 转换为度
-                    if (angle[0]<0){
-                        angle[0] = angle[0]+360
-                    }
-                    angle[1] = Math.toDegrees(values[1].toDouble()) // 俯仰角(Pitch) 转换为度
-                    angle[2] = Math.toDegrees(values[2].toDouble()) // 滚转角(Roll) 转换为度
-
                     val angleString = "${relativeTimeMillis},${angle.joinToString(",")}\n"
-                    Log.d("MainActivity", "value[0] is ${angle.joinToString(",")}")
+                    Log.d("ZYZ", "value[0] is ${angle.joinToString(",")}")
                     sensorManagerHelper.writeDataToFile(angleString)
+
                 }
             }
+
         }
 
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
@@ -319,8 +320,12 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun clearRecordingMessage() {
         _recordingMessage.value = null
     }
+
+    fun registerSensorListeners(){
+        sensorManagerHelper.startSensorListener(sensorEventListener)// 启动传感器监听
+    }
     fun unregisterSensorListeners() {
-        sensorManager.unregisterListener(sensorEventListener)
+        sensorManagerHelper.stopSensorListener(sensorEventListener)// 停止传感器监听
     }
 
 }

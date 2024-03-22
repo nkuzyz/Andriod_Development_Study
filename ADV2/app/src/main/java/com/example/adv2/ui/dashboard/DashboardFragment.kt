@@ -122,5 +122,11 @@ class DashboardFragment : Fragment() {
 //        cameraExecutor.shutdown()
         dashboardViewModel.unregisterSensorListeners()
     }
+    override fun onResume() {
+        super.onResume()
+        // 重新注册传感器监听器
+        dashboardViewModel.registerSensorListeners()
+    }
+
 
 }

@@ -18,13 +18,7 @@ class SensorManagerHelper(private val context: Context) {
     private var gyroscope: Sensor? = null
     private var magnetometer: Sensor? = null
 
-    private lateinit var accelerometerFileUri: Uri
-    private lateinit var gyroscopeFileUri: Uri
-    private lateinit var magnetometerFileUri: Uri
     private lateinit var fileUri: Uri
-    private var addHeaderAcc: Boolean = true
-    private var addHeaderGyro: Boolean = true
-    private var addHeaderMag: Boolean = true
     private var addHeader: Boolean = true
 
 
@@ -37,31 +31,24 @@ class SensorManagerHelper(private val context: Context) {
 //        gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
         magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
 
-        // 创建数据文件
-        //得到时间戳
-
-//        accelerometerFileUri = createFileForSensor("accelerometer.csv")
-//        gyroscopeFileUri = createFileForSensor("gyroscope.csv")
-//        magnetometerFileUri = createFileForSensor("magnetometer.csv")
-        fileUri = createFileForSensor("file.csv")
-        addHeaderForFile(fileUri)
-
-        addHeaderAcc = true
-        addHeaderGyro = true
-        addHeaderMag = true
         addHeader = true
 
     }
 
 
+    fun StartRecordingVideo():Uri{
+        fileUri = createFileForSensor("file.csv")
+        addHeaderForFile(fileUri)
+        return fileUri
+    }
 
-    fun startSensorListener(sensorEventListener: SensorEventListener):Uri {
+    fun startSensorListener(sensorEventListener: SensorEventListener) {
         initializeSensors()
         sensorManager.registerListener(sensorEventListener, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
 //        sensorManager.registerListener(sensorEventListener, gyroscope, SensorManager.SENSOR_DELAY_NORMAL)
         sensorManager.registerListener(sensorEventListener, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
-        return fileUri
     }
+
 
     fun stopSensorListener(sensorEventListener: SensorEventListener) {
         sensorManager.unregisterListener(sensorEventListener)
@@ -106,56 +93,6 @@ class SensorManagerHelper(private val context: Context) {
         }
     }
 
-    fun writeDataToFileAcc(data: String) {
-        try {
-            context.contentResolver.openOutputStream(accelerometerFileUri, "wa")?.use { outputStream ->
-                if (addHeaderAcc) {
-                    // 只在首次写入时添加标题行
-                    val header = "Time,X-axis,Y-axis,Z-axis\n"
-                    outputStream.write(header.toByteArray())
-                    addHeaderAcc = false
-                }
-                // 假设data字符串是以逗号分隔的x,y,z值
-//                val csvFormattedString = "$data" // 在每条记录后添加换行符
-                outputStream.write(data.toByteArray())
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-    }
-    fun writeDataToFileGyro(data: String) {
-        try {
-            context.contentResolver.openOutputStream(gyroscopeFileUri, "wa")?.use { outputStream ->
-                if (addHeaderGyro) {
-                    // 只在首次写入时添加标题行
-                    val header = "Time,X-axis,Y-axis,Z-axis\n"
-                    outputStream.write(header.toByteArray())
-                    addHeaderGyro = false
-                }
-                // 假设data字符串是以逗号分隔的x,y,z值
-//                val csvFormattedString = "$data\n" // 在每条记录后添加换行符
-                outputStream.write(data.toByteArray())
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-    }
-    fun writeDataToFileMag(data: String) {
-        try {
-            context.contentResolver.openOutputStream(magnetometerFileUri, "wa")?.use { outputStream ->
-                if (addHeaderMag) {
-                    // 只在首次写入时添加标题行
-                    val header = "Time,X-axis,Y-axis,Z-axis,X-axis,Y-axis,Z-axis,X-axis,Y-axis,Z-axis\n"
-                    outputStream.write(header.toByteArray())
-                    addHeaderMag = false
-                }
-                // 假设data字符串是以逗号分隔的x,y,z值
-//                val csvFormattedString = "$data\n" // 在每条记录后添加换行符
-                outputStream.write(data.toByteArray())
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-    }
+
 
 }
