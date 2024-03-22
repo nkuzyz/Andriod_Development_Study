@@ -26,6 +26,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,6 +51,7 @@ import androidx.navigation.NavController
 import com.example.adv2.R
 import com.example.adv2.model.Message
 import com.example.adv2.model.User
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.Call
 import okhttp3.Callback
@@ -74,18 +76,29 @@ fun ChatScreen(navController: NavController,viewModel:NotificationsViewModel) {
     val coroutineScope = rememberCoroutineScope()
 
     // 使用mutableStateOf包装messages列表，确保UI能够自动更新
-    var messages by remember { mutableStateOf(viewModel.messages.value ?: mutableListOf()) }
+    val messages:List<Message> by viewModel.messages.observeAsState(listOf(Message(
+        "你好，请拍摄一段视频，这将会自动上传并得到一段caption，你可以问一些相关的问题",
+        getUser(),
+        getAssistant(),
+        LocalDateTime.now(),
+        false
+    )))
+//    var messages by remember { mutableStateOf(viewModel.messages.value ?: mutableListOf()) }
     // 直接观察LiveData的变化
-//    val messages by viewModel.messages.observeAsState(initial = listOf())
+//    val messages :MutableList<Message> by viewModel.messages.observeAsState(initial = mutableListOf())
     val listState = rememberLazyListState(messages.size - 1)
 
 
     // 观察消息列表的变化，并在消息列表发生变化时执行滚动到底部的操作
     LaunchedEffect(messages) {
         coroutineScope.launch {
-            listState.animateScrollToItem(messages.size - 1)
+            if (messages.isNotEmpty()) {
+//                delay(100) // 仅示例，实际延时根据需要调整
+                listState.animateScrollToItem(messages.size - 1)
+            }
         }
     }
+
 
 
     Column(
@@ -97,9 +110,7 @@ fun ChatScreen(navController: NavController,viewModel:NotificationsViewModel) {
 
         MessageList(state = listState, messages = messages, modifier = Modifier.weight(1f))
 
-        ChatBottomBar(onClick = {
-            messages = messages.toMutableList().apply { add(it) }
-        }, navController = navController,viewModel = viewModel)
+        ChatBottomBar(navController = navController,viewModel = viewModel)
     }
 }
 
@@ -139,7 +150,7 @@ private fun TopAppBar(title: String) {
  */
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-private fun ChatBottomBar(onClick: (Message) -> Unit, navController: NavController,viewModel:NotificationsViewModel ) {
+private fun ChatBottomBar(navController: NavController,viewModel:NotificationsViewModel ) {
     var editingText by remember { mutableStateOf("") }
     // 在Compose中获取NavController实例
     Row(
@@ -200,20 +211,18 @@ private fun ChatBottomBar(onClick: (Message) -> Unit, navController: NavControll
             Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = {
-                    onClick(
-                        Message(
+                        viewModel.addMessage(
+                            Message(
                             content = editingText,
                             sender = getUser(),
                             receiver = getAssistant(),
                             sendTime = LocalDateTime.now(),
                             mime = true
+                            )
                         )
-                    )
                     Log.d(TAG, "发了 $editingText")
                     viewModel.SendMessage(editingText)
                     editingText = ""
-
-
                 },
                 colors = ButtonDefaults.buttonColors(Color(0xff07c160)),
                 shape = RoundedCornerShape(4.dp),

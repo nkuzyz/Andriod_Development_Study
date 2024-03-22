@@ -71,6 +71,11 @@ class DashboardFragment : Fragment() {
                 dashboardViewModel.clearRecordingMessage()
             }
         }
+//        dashboardViewModel.uploadResult.observe(viewLifecycleOwner) { result ->
+//            //在viewmodel里操作list 列表加一条消息
+//            Log.d(TAG, "观察者回调触发，收到新值: $result")
+//            notificationsViewModel.addAssistantMessageString(result)
+//        }
     }
     private fun setupListeners() {
         binding.videoCaptureButton.setOnClickListener {

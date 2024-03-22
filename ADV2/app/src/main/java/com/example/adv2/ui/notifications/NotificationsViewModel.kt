@@ -18,21 +18,24 @@ import java.time.LocalDateTime
 import java.util.concurrent.TimeUnit
 
 class NotificationsViewModel (application: Application) : AndroidViewModel(application) {
-    private val _messages = MutableLiveData<MutableList<Message>>(mutableListOf(Message(
+    private val _messages = MutableLiveData<List<Message>>(listOf(Message(
         "你好，请拍摄一段视频，这将会自动上传并得到一段caption，你可以问一些相关的问题",
         getUser(),
         getAssistant(),
         LocalDateTime.now(),
         false
     )))
-    val messages: LiveData<MutableList<Message>> get()= _messages
+    val messages: LiveData<List<Message>> = _messages
     // 添加新消息的方法
 
-    fun addMessage(message: Message) {
+    fun addMessage(newMessage: Message) {
         // 当前消息列表
-        val currentList = _messages.value ?: mutableListOf()
-        currentList.add(message)
-        _messages.value = currentList
+//        val currentList = _messages.value ?: mutableListOf()
+//        currentList.add(message)
+//        _messages.value = currentList
+        val updatedList = _messages.value.orEmpty().toMutableList()
+        updatedList.add(newMessage)
+        _messages.value = updatedList
     }
 
     fun addAssistantMessageString(result: String){
@@ -43,9 +46,9 @@ class NotificationsViewModel (application: Application) : AndroidViewModel(appli
                 LocalDateTime.now(),
                 false
             )
-        _messages.value?.add(newMessage)
-        // 更新 LiveData 的值以通知观察者
-        _messages.postValue(_messages.value)
+        val updatedList = _messages.value.orEmpty().toMutableList()
+        updatedList.add(newMessage)
+        _messages.value = updatedList
     }
 
     fun SendMessage(editingText:String){
@@ -71,13 +74,32 @@ class NotificationsViewModel (application: Application) : AndroidViewModel(appli
 
             override fun onResponse(call: Call, response: Response) {
                 // 处理请求成功情况
-                if (response.isSuccessful) {
-                    val responseBody = response.body?.string() // 获取字符串形式的响应体
-                    Log.d(TAG, "服务器响应: $responseBody")
-                    // 在这里处理服务器响应
-                } else {
-                    // 请求失败处理
-                    Log.d(TAG, "请求失败, HTTP状态码: ${response.code}, 原因: ${response.message}")
+                response.use { resp ->
+                    if (resp.isSuccessful) {
+                        // 获取响应体的字符串
+                        val responseBody = resp.body?.string()
+
+                        // 解析响应，或者直接使用响应内容
+                        // 这里假设我们直接使用响应内容作为消息内容
+                        responseBody?.let { body ->
+                            // 在主线程中更新 LiveData
+                            val successMessage = Message(
+                                content = body, // 使用服务器响应更新消息内容
+                                sender = getAssistant(), // 假设的发送者
+                                receiver = getUser(), // 假设的接收者
+                                sendTime = LocalDateTime.now(),
+                                mime = false
+                            )
+
+                            // 使用 postValue 安全地在后台线程更新 LiveData
+//                            _messages.postValue(_messages.value?.apply { add(successMessage) })
+                            _messages.postValue(_messages.value.orEmpty() + successMessage)
+
+                        }
+                    } else {
+                        // 处理错误响应
+                        Log.e(TAG, "请求失败，HTTP状态码: ${resp.code}")
+                    }
                 }
             }
         })
