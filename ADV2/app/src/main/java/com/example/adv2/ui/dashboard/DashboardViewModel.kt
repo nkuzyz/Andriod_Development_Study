@@ -27,13 +27,34 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import android.Manifest
+import android.content.ContentResolver
+import android.net.Uri
+import androidx.core.content.ContentProviderCompat.requireContext
+import com.example.adv2.SharedViewModel
 import com.example.adv2.function.SensorManagerHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import okio.BufferedSink
+import okio.Okio
+import okio.buffer
+import okio.source
+import java.io.IOException
+import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
@@ -60,8 +81,14 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val _recordingMessage = MutableLiveData<String?>()
     val recordingMessage: LiveData<String?> = _recordingMessage
 
+    private var videoUri: Uri ?= null
+    private var csvUri:Uri?=null
+
+    private val _uploadResult = MutableLiveData<String>()
+    val uploadResult: LiveData<String> = _uploadResult
+
     companion object {
-        private const val TAG = "DashboardViewModel"
+        private const val TAG = "ZYZ"
     }
 
     fun startCamera() {
@@ -89,6 +116,61 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }, ContextCompat.getMainExecutor(getApplication()))
     }
 
+    fun uploadFiles(serverUrl: String) {
+        val application = getApplication<Application>()
+        val contentResolver = application.contentResolver
+        Log.d(TAG, "uploadFiles")
+        val videoRequestBody = videoUri?.let { uri ->
+            contentResolver.openInputStream(uri)?.source()?.buffer()?.let { sourceBuffered ->
+                // 使用Okio 2.x API
+                sourceBuffered.readByteString().toRequestBody("video/mp4".toMediaTypeOrNull())
+            }
+        }
+
+        val csvRequestBody = csvUri?.let { uri ->
+            contentResolver.openInputStream(uri)?.source()?.buffer()?.let { sourceBuffered ->
+                // 使用Okio 2.x API
+                sourceBuffered.readByteString().toRequestBody("text/csv".toMediaTypeOrNull())
+            }
+        }
+
+        val multipartBody = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("video", "filename.mp4", videoRequestBody!!)
+            .addFormDataPart("csv", "filename.csv", csvRequestBody!!)
+            .build()
+
+        val request = Request.Builder()
+            .url(serverUrl)
+            .post(multipartBody)
+            .build()
+
+        val client = OkHttpClient.Builder()
+            .readTimeout(60, TimeUnit.SECONDS) // 读取超时
+            .writeTimeout(60, TimeUnit.SECONDS) // 写入超时
+            .connectTimeout(60, TimeUnit.SECONDS) // 连接超时
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                // 处理请求失败情况
+                Log.d(TAG, "请求没发出: ${e.message}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                // 处理请求成功情况
+                if (response.isSuccessful) {
+                    // 请求成功处理，例如更新UI
+                    val responseBody = response.body?.string() // 获取字符串形式的响应体
+                    Log.d(TAG, "服务器响应: $responseBody")
+                    _uploadResult.postValue(" $responseBody")
+                } else {
+                    // 请求失败处理
+                    Log.d(TAG, "请求失败, HTTP状态码: ${response.code}, 原因: ${response.message}")
+                }
+            }
+        })
+    }
 
     fun captureVideo() {
         val currentRecording = recording
@@ -160,7 +242,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 // 录制开始的逻辑
                 recordingStartTime = System.currentTimeMillis()
                 _recordingState.postValue(true)
-                sensorManagerHelper.startSensorListener(sensorEventListener)// 启动传感器监听
+                csvUri = sensorManagerHelper.startSensorListener(sensorEventListener)// 启动传感器监听
 
             }
             is VideoRecordEvent.Finalize -> {
@@ -170,6 +252,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 val recordingDuration = recordingEndTime - recordingStartTime
                 if (!recordEvent.hasError()) {
                     // 处理成功录制的视频
+                    videoUri = recordEvent.outputResults.outputUri
                     val msg = "Video capture succeeded: ${recordEvent.outputResults.outputUri}, Duration: $recordingDuration ms"
                     postRecordingMessage(msg)
                 } else {

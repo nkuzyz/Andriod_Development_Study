@@ -16,10 +16,14 @@ import androidx.camera.video.Recorder
 import androidx.camera.video.VideoCapture
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
 import com.example.adv2.R
 import com.example.adv2.databinding.FragmentDashboardBinding
+import com.example.adv2.ui.notifications.NotificationsFragment
+import com.example.adv2.ui.notifications.NotificationsViewModel
 
 class DashboardFragment : Fragment() {
 
@@ -28,9 +32,11 @@ class DashboardFragment : Fragment() {
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
-    private val dashboardViewModel: DashboardViewModel by viewModels()
+    private val dashboardViewModel: DashboardViewModel by activityViewModels()
+    private val notificationsViewModel: NotificationsViewModel by activityViewModels()
+    private val serverUrl: String = "http://116.205.128.125:8000/upload-files/"
     companion object {
-        private const val TAG = "CameraXApp"
+        private const val TAG = "ZYZ"
         private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
     }
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -45,6 +51,7 @@ class DashboardFragment : Fragment() {
         setupListeners()
 
         dashboardViewModel.startCamera()
+
 
 
 
@@ -68,6 +75,10 @@ class DashboardFragment : Fragment() {
     private fun setupListeners() {
         binding.videoCaptureButton.setOnClickListener {
             dashboardViewModel.captureVideo()
+        }
+        binding.uploadButton.setOnClickListener{
+            dashboardViewModel.uploadFiles(serverUrl)
+            findNavController().navigate(R.id.action_dashboard_to_notifications)
         }
     }
     private fun updateButtonState(isRecording: Boolean) {

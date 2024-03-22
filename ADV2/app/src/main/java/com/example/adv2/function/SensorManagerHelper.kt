@@ -30,6 +30,7 @@ class SensorManagerHelper(private val context: Context) {
 
     init {
     }
+
     private fun initializeSensors() {
         sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
@@ -52,12 +53,14 @@ class SensorManagerHelper(private val context: Context) {
 
     }
 
-    fun startSensorListener(sensorEventListener: SensorEventListener) {
+
+
+    fun startSensorListener(sensorEventListener: SensorEventListener):Uri {
         initializeSensors()
         sensorManager.registerListener(sensorEventListener, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
 //        sensorManager.registerListener(sensorEventListener, gyroscope, SensorManager.SENSOR_DELAY_NORMAL)
         sensorManager.registerListener(sensorEventListener, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
-
+        return fileUri
     }
 
     fun stopSensorListener(sensorEventListener: SensorEventListener) {

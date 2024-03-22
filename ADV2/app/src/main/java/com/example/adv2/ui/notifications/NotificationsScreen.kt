@@ -1,7 +1,7 @@
-package com.example.adv2.screen
-
+package com.example.adv2.ui.notifications
 
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -27,8 +27,9 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -45,46 +46,60 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.example.adv2.R
 import com.example.adv2.model.Message
 import com.example.adv2.model.User
 import kotlinx.coroutines.launch
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.FormBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import java.io.IOException
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.TimeUnit
+
+
+const val TAG = "ZYZ"
+
+
+
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun ChatScreen() {
+fun ChatScreen(navController: NavController,viewModel:NotificationsViewModel) {
     val coroutineScope = rememberCoroutineScope()
 
-    val messages = remember {
-        mutableStateListOf(
-            Message(
-                "你好，欢迎关注小陈！",
-                getCurrentUser(),
-                getReceiverUser(),
-                LocalDateTime.now(),
-                false
-            )
-        )
-    }
+    // 使用mutableStateOf包装messages列表，确保UI能够自动更新
+    var messages by remember { mutableStateOf(viewModel.messages.value ?: mutableListOf()) }
+    // 直接观察LiveData的变化
+//    val messages by viewModel.messages.observeAsState(initial = listOf())
     val listState = rememberLazyListState(messages.size - 1)
+
+
+    // 观察消息列表的变化，并在消息列表发生变化时执行滚动到底部的操作
+    LaunchedEffect(messages) {
+        coroutineScope.launch {
+            listState.animateScrollToItem(messages.size - 1)
+        }
+    }
+
 
     Column(
         modifier = Modifier
             .background(Color(0xffededed))
             .fillMaxSize()
     ) {
-        TopAppBar(title = getReceiverUser().nickname)
+        TopAppBar(title = getAssistant().nickname)
 
         MessageList(state = listState, messages = messages, modifier = Modifier.weight(1f))
 
         ChatBottomBar(onClick = {
-            messages.add(it)
-            coroutineScope.launch {
-                listState.animateScrollToItem(messages.size - 1)
-            }
-        })
+            messages = messages.toMutableList().apply { add(it) }
+        }, navController = navController,viewModel = viewModel)
     }
 }
 
@@ -99,11 +114,11 @@ private fun TopAppBar(title: String) {
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_back),
-            contentDescription = null,
-            modifier = Modifier.size(20.dp)
-        )
+//        Icon(
+//            painter = painterResource(R.drawable.ic_back),
+//            contentDescription = null,
+//            modifier = Modifier.size(20.dp)
+//        )
         Text(
             text = title,
             textAlign = TextAlign.Center,
@@ -111,11 +126,11 @@ private fun TopAppBar(title: String) {
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold
         )
-        Icon(
-            painter = painterResource(R.drawable.ic_more),
-            contentDescription = null,
-            modifier = Modifier.size(24.dp)
-        )
+//        Icon(
+//            painter = painterResource(R.drawable.ic_more),
+//            contentDescription = null,
+//            modifier = Modifier.size(24.dp)
+//        )
     }
 }
 
@@ -124,9 +139,9 @@ private fun TopAppBar(title: String) {
  */
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-private fun ChatBottomBar(onClick: (Message) -> Unit) {
+private fun ChatBottomBar(onClick: (Message) -> Unit, navController: NavController,viewModel:NotificationsViewModel ) {
     var editingText by remember { mutableStateOf("") }
-
+    // 在Compose中获取NavController实例
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -153,23 +168,34 @@ private fun ChatBottomBar(onClick: (Message) -> Unit) {
                 .background(Color.White)
                 .padding(start = 8.dp, top = 10.dp, end = 8.dp)
         )
-        Icon(
-            painter = painterResource(R.drawable.ic_smile),
-            contentDescription = null,
-            modifier = Modifier
-                .align(Alignment.CenterVertically)
-                .padding(4.dp)
-                .size(28.dp)
-        )
+//        Icon(
+//            painter = painterResource(R.drawable.ic_smile),
+//            contentDescription = null,
+//            modifier = Modifier
+//                .align(Alignment.CenterVertically)
+//                .padding(4.dp)
+//                .size(28.dp)
+//        )
         if (editingText.isBlank()) {
-            Icon(
-                painter = painterResource(R.drawable.ic_add),
-                contentDescription = null,
-                modifier = Modifier
-                    .align(Alignment.CenterVertically)
-                    .padding(4.dp)
-                    .size(28.dp)
-            )
+            Button(onClick = {
+                try {
+                    navController.navigate(R.id.action_notifications_to_dashboard)
+                } catch (e: Exception) {
+                    // 记录异常信息
+                    Log.e("Navigation", "Failed to navigate", e)
+                }
+            }) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_add),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .align(Alignment.CenterVertically)
+                        .padding(4.dp)
+                        .size(28.dp)
+                )
+                
+            }
+
         } else {
             Spacer(modifier = Modifier.width(8.dp))
             Button(
@@ -177,13 +203,17 @@ private fun ChatBottomBar(onClick: (Message) -> Unit) {
                     onClick(
                         Message(
                             content = editingText,
-                            sender = getCurrentUser(),
-                            receiver = getReceiverUser(),
+                            sender = getUser(),
+                            receiver = getAssistant(),
                             sendTime = LocalDateTime.now(),
                             mime = true
                         )
                     )
+                    Log.d(TAG, "发了 $editingText")
+                    viewModel.SendMessage(editingText)
                     editingText = ""
+
+
                 },
                 colors = ButtonDefaults.buttonColors(Color(0xff07c160)),
                 shape = RoundedCornerShape(4.dp),
@@ -308,13 +338,15 @@ fun MessageBubble(message: Message) {
 /**
  * 构造当前用户
  */
-private fun getCurrentUser(): User {
+fun getUser(): User {
     return User("老陈", R.drawable.avatar1)
 }
 
 /**
  * 构造聊天用户
  */
-private fun getReceiverUser(): User {
-    return User("小陈", R.drawable.avatar2)
+fun getAssistant(): User {
+    return User("Assistant", R.drawable.avatar2)
 }
+
+

@@ -46,6 +46,7 @@ dependencies {
     implementation 'androidx.activity:activity-compose'
     androidTestImplementation "androidx.compose.ui:ui-test-junit4"
     debugImplementation "androidx.compose.ui:ui-tooling"
+    implementation "androidx.compose.runtime:runtime-livedata"
 
 
     implementation 'androidx.core:core-ktx:1.8.0'
@@ -70,4 +71,6 @@ dependencies {
 
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1' // 请使用最新版本
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.3.1'
+
+    implementation("com.squareup.okhttp3:okhttp:4.2.0")
 }
