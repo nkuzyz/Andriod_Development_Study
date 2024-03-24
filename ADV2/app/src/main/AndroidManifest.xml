@@ -2,12 +2,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!--具备摄像头-->
     <uses-feature android:name="android.hardware.camera.any" />
+    <!--摄像头权限-->
     <uses-permission android:name="android.permission.CAMERA"/>
+    <!--录制音频权限-->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!--存储图像或者视频权限-->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
     <uses-feature android:name="android.hardware.camera" android:required="true"/>
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="true"/>
+    <!--网络权限-->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application

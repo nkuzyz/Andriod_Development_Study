@@ -39,6 +39,14 @@ class DashboardFragment : Fragment() {
         private const val TAG = "ZYZ"
         private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
     }
+
+    override fun onResume() {
+        super.onResume()
+        // 重新注册传感器监听器
+        dashboardViewModel.registerSensorListeners()
+        dashboardViewModel.startCamera(this)
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
         _binding = FragmentDashboardBinding.inflate(inflater, container, false)
@@ -49,12 +57,7 @@ class DashboardFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupObservers()
         setupListeners()
-
-        dashboardViewModel.startCamera()
-
-
-
-
+//        dashboardViewModel.startCamera()
     }
     private fun setupObservers() {
         dashboardViewModel.previewViewProvider.observe(viewLifecycleOwner) { previewViewProvider ->
@@ -84,6 +87,9 @@ class DashboardFragment : Fragment() {
         binding.uploadButton.setOnClickListener{
             dashboardViewModel.uploadFiles(serverUrl)
             findNavController().navigate(R.id.action_dashboard_to_notifications)
+        }
+        binding.imageCaptureButton.setOnClickListener{
+            dashboardViewModel.takePhoto()
         }
     }
     private fun updateButtonState(isRecording: Boolean) {
@@ -122,11 +128,7 @@ class DashboardFragment : Fragment() {
 //        cameraExecutor.shutdown()
         dashboardViewModel.unregisterSensorListeners()
     }
-    override fun onResume() {
-        super.onResume()
-        // 重新注册传感器监听器
-        dashboardViewModel.registerSensorListeners()
-    }
+
 
 
 }

@@ -29,7 +29,12 @@ import androidx.lifecycle.viewModelScope
 import android.Manifest
 import android.content.ContentResolver
 import android.net.Uri
+import androidx.camera.core.AspectRatio
+import androidx.camera.core.Camera
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
 import androidx.core.content.ContentProviderCompat.requireContext
+import androidx.lifecycle.LifecycleOwner
 import com.example.adv2.SharedViewModel
 import com.example.adv2.function.SensorManagerHelper
 import kotlinx.coroutines.Dispatchers
@@ -66,8 +71,12 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val accelerometerValues = FloatArray(3)
     private val magneticValues = FloatArray(3)
 
+    var camera: Camera? = null//相机对象
     // 需要初始化videoCapture
     private var videoCapture: VideoCapture<Recorder>? = null
+    // 在 DashboardViewModel 中添加 ImageCapture 成员变量
+    private var imageCapture: ImageCapture? = null
+
     //recording的状态
     private var recording: Recording? = null
     // 记录开始和结束时间，用于计算录制时长
@@ -80,8 +89,14 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val _recordingMessage = MutableLiveData<String?>()
     val recordingMessage: LiveData<String?> = _recordingMessage
 
+
+    //录像的时候
     private var videoUri: Uri ?= null
     private var csvUri:Uri?=null
+
+    //拍照的时候
+    private var imageUri: Uri?= null
+    private var Azimuth:Float ?= null
 
     private val _uploadResult = MutableLiveData<String>()
     val uploadResult: LiveData<String> = _uploadResult
@@ -90,30 +105,93 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         private const val TAG = "ZYZ"
     }
 
-    fun startCamera() {
+    fun startCamera(lifecycleOwner: LifecycleOwner) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(getApplication())
         cameraProviderFuture.addListener({
             try {
+                //获取相机信息
                 val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+                //预览配置
                 val preview = Preview.Builder().build()
+                //拍照用例配置
+                imageCapture = ImageCapture.Builder()
+//                    .setTargetAspectRatio(AspectRatio.RATIO_16_9)
+//                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                    .build()
+
+                //录像用例配置
                 val recorder = Recorder.Builder()
                     .setQualitySelector(QualitySelector.from(Quality.HD))
                     .build()
                 val videoCaptureTemp = VideoCapture.withOutput(recorder) // 直接初始化一个局部变量
                 videoCapture = videoCaptureTemp // 赋值给类属性
+
+                //使用后置摄像头
                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
 
                 // Unbind use cases before rebinding
                 cameraProvider.unbindAll()
-
+                camera = cameraProvider?.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageCapture, videoCapture)
                 // Need to bind the lifecycle of cameras to the lifecycle owner
                 // This will be handled in the Fragment by observing previewViewProvider LiveData
-                _previewViewProvider.postValue(PreviewViewProvider(preview, videoCaptureTemp, cameraSelector))
+//                _previewViewProvider.postValue(PreviewViewProvider(preview, videoCaptureTemp, cameraSelector))
             } catch (exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
         }, ContextCompat.getMainExecutor(getApplication()))
     }
+
+    fun takePhoto() {
+        Log.d(TAG, "Take Photo")
+        val imageCapture = this.imageCapture ?: run {
+            Log.e(TAG, "ImageCapture is not initialized")
+            return
+        }
+
+
+        // 创建文件名和存储位置
+        val name = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS", Locale.US)
+            .format(System.currentTimeMillis()) + ".jpg"
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/CameraX-Photo")
+            }
+        }
+
+        // 配置输出选项
+        val outputOptions = ImageCapture.OutputFileOptions
+            .Builder(getApplication<Application>().contentResolver,
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                contentValues)
+            .build()
+
+        // 捕获图片
+        imageCapture.takePicture(
+            outputOptions,
+            ContextCompat.getMainExecutor(getApplication()),
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                    val savedUri = output.savedUri ?: return
+                    imageUri = savedUri
+                    Log.d(TAG, "Image saved: $savedUri")
+                    // 在这里记录方位角
+                    val angle = caculateAzimuth(accelerometerValues,magneticValues)
+                    Azimuth = angle[0].toFloat()
+
+                    Log.d(TAG, "Azimuth at the time of photo capture: $Azimuth")
+                    // 可以选择更新 UI 或进行其他操作
+                }
+
+                override fun onError(exc: ImageCaptureException) {
+                    Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
+                }
+            }
+        )
+    }
+
 
     fun uploadFiles(serverUrl: String) {
         val application = getApplication<Application>()
@@ -283,21 +361,8 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     }
 
                 }
-                val R = FloatArray(9)
-                val values = FloatArray(3)
-                SensorManager.getRotationMatrix(R, null, accelerometerValues, magneticValues)
-                SensorManager.getOrientation(R, values)
-                val angle = DoubleArray(3) // 创建一个双精度浮点数数组来存储转换后的角度值
-
-                // 分别将values数组中的每个弧度值转换为度数
-                angle[0] = Math.toDegrees(values[0].toDouble()) // 方位角(Azimuth) 转换为度
-                if (angle[0]<0){
-                    angle[0] = angle[0]+360
-                }
-                angle[1] = Math.toDegrees(values[1].toDouble()) // 俯仰角(Pitch) 转换为度
-                angle[2] = Math.toDegrees(values[2].toDouble()) // 滚转角(Roll) 转换为度
-
                 if(_recordingState.value == true) {
+                    val angle = caculateAzimuth(accelerometerValues,magneticValues)
                     val relativeTimeMillis = System.currentTimeMillis() - recordingStartTime
                     val angleString = "${relativeTimeMillis},${angle.joinToString(",")}\n"
                     Log.d("ZYZ", "value[0] is ${angle.joinToString(",")}")
@@ -326,6 +391,22 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     }
     fun unregisterSensorListeners() {
         sensorManagerHelper.stopSensorListener(sensorEventListener)// 停止传感器监听
+    }
+    fun caculateAzimuth(accelerometerValues:FloatArray,magneticValues:FloatArray):DoubleArray{
+        val R = FloatArray(9)
+        val values = FloatArray(3)
+        SensorManager.getRotationMatrix(R, null, accelerometerValues, magneticValues)
+        SensorManager.getOrientation(R, values)
+        val angle = DoubleArray(3) // 创建一个双精度浮点数数组来存储转换后的角度值
+
+        // 分别将values数组中的每个弧度值转换为度数
+        angle[0] = Math.toDegrees(values[0].toDouble()) // 方位角(Azimuth) 转换为度
+        if (angle[0]<0){
+            angle[0] = angle[0]+360
+        }
+        angle[1] = Math.toDegrees(values[1].toDouble()) // 俯仰角(Pitch) 转换为度
+        angle[2] = Math.toDegrees(values[2].toDouble()) // 滚转角(Roll) 转换为度
+        return angle
     }
 
 }
