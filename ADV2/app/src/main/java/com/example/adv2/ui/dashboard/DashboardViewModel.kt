@@ -29,6 +29,7 @@ import androidx.lifecycle.viewModelScope
 import android.Manifest
 import android.content.ContentResolver
 import android.net.Uri
+import android.widget.Toast
 import androidx.camera.core.AspectRatio
 import androidx.camera.core.Camera
 import androidx.camera.core.ImageCapture
@@ -71,7 +72,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val accelerometerValues = FloatArray(3)
     private val magneticValues = FloatArray(3)
 
-//    var camera: Camera? = null//相机对象
+
     // 需要初始化videoCapture
     private var videoCapture: VideoCapture<Recorder>? = null
     // 在 DashboardViewModel 中添加 ImageCapture 成员变量
@@ -106,6 +107,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun startCamera() {
+
         val cameraProviderFuture = ProcessCameraProvider.getInstance(getApplication())
         cameraProviderFuture.addListener({
             try {
@@ -114,9 +116,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 val preview = Preview.Builder().build()
 
                 //拍照用例配置
-                val imageCaptureTemp = ImageCapture.Builder().build()
+                val imageCaptureTemp = ImageCapture.Builder()
 //                    .setTargetAspectRatio(AspectRatio.RATIO_16_9)
 //                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                    .build()
                 imageCapture = imageCaptureTemp
 
                 //录像用例配置
@@ -174,13 +177,14 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                     val savedUri = output.savedUri ?: return
                     imageUri = savedUri
-                    Log.d(TAG, "Image saved: $savedUri")
                     // 在这里记录方位角
                     val angle = caculateAzimuth(accelerometerValues,magneticValues)
                     Azimuth = angle[0].toFloat()
 
-                    Log.d(TAG, "Azimuth at the time of photo capture: $Azimuth")
                     // 可以选择更新 UI 或进行其他操作
+                    val imageMsg = "Image saved: $savedUri"+"Azimuth: $Azimuth"
+                    Log.d(TAG, imageMsg)
+                    postRecordingMessage(imageMsg)
                 }
 
                 override fun onError(exc: ImageCaptureException) {

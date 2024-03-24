@@ -29,6 +29,8 @@ import com.example.adv2.databinding.FragmentDashboardBinding
 import com.example.adv2.function.PermissionsManager
 import com.example.adv2.ui.notifications.NotificationsFragment
 import com.example.adv2.ui.notifications.NotificationsViewModel
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class DashboardFragment : Fragment() {
 
@@ -42,6 +44,8 @@ class DashboardFragment : Fragment() {
     private lateinit var permissionsManager: PermissionsManager
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<Array<String>>
     private val serverUrl: String = "http://116.205.128.125:8000/upload-files/"
+
+//    private lateinit var cameraExecutor: ExecutorService
     companion object {
         private const val TAG = "ZYZ"
         private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
@@ -61,6 +65,7 @@ class DashboardFragment : Fragment() {
             if (granted) {
                 // 权限被授予，继续操作
                 dashboardViewModel.registerSensorListeners()
+//                cameraExecutor = Executors.newSingleThreadExecutor()
                 dashboardViewModel.startCamera()
             } else {
                 // 权限被拒绝，处理结果
@@ -93,7 +98,6 @@ class DashboardFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupObservers()
         setupListeners()
-//        dashboardViewModel.startCamera()
     }
     private fun setupObservers() {
         dashboardViewModel.previewViewProvider.observe(viewLifecycleOwner) { previewViewProvider ->
@@ -166,6 +170,8 @@ class DashboardFragment : Fragment() {
 //        cameraExecutor.shutdown()
         dashboardViewModel.unregisterSensorListeners()
     }
+
+
 
 
 
