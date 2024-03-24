@@ -7,12 +7,13 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
 class PermissionsManager(private val activity: Activity) {
-    private val PERMISSIONS_REQUEST_CODE = 101
+    private val PERMISSIONS_REQUEST_CODE = 10
 
     // 列出所有需要请求的权限
-    private val REQUIRED_PERMISSIONS = arrayOf(
+    val REQUIRED_PERMISSIONS = arrayOf(
         Manifest.permission.CAMERA,
         Manifest.permission.RECORD_AUDIO,
+        Manifest.permission.READ_EXTERNAL_STORAGE,
         Manifest.permission.WRITE_EXTERNAL_STORAGE // 注意: 对于API级别 >= 29 (Android 10) 的设备, 可以不需要这个权限
     )
 
@@ -30,14 +31,4 @@ class PermissionsManager(private val activity: Activity) {
         )
     }
 
-    // 处理权限请求结果的方法，可以在Activity的onRequestPermissionsResult中调用
-    fun handlePermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray, onGranted: () -> Unit, onDenied: () -> Unit) {
-        if (requestCode == PERMISSIONS_REQUEST_CODE) {
-            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                onGranted()
-            } else {
-                onDenied()
-            }
-        }
-    }
 }

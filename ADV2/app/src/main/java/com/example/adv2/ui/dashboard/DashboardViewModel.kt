@@ -71,7 +71,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val accelerometerValues = FloatArray(3)
     private val magneticValues = FloatArray(3)
 
-    var camera: Camera? = null//相机对象
+//    var camera: Camera? = null//相机对象
     // 需要初始化videoCapture
     private var videoCapture: VideoCapture<Recorder>? = null
     // 在 DashboardViewModel 中添加 ImageCapture 成员变量
@@ -105,19 +105,19 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         private const val TAG = "ZYZ"
     }
 
-    fun startCamera(lifecycleOwner: LifecycleOwner) {
+    fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(getApplication())
         cameraProviderFuture.addListener({
             try {
-                //获取相机信息
-                val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+
                 //预览配置
                 val preview = Preview.Builder().build()
+
                 //拍照用例配置
-                imageCapture = ImageCapture.Builder()
+                val imageCaptureTemp = ImageCapture.Builder().build()
 //                    .setTargetAspectRatio(AspectRatio.RATIO_16_9)
 //                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                    .build()
+                imageCapture = imageCaptureTemp
 
                 //录像用例配置
                 val recorder = Recorder.Builder()
@@ -129,13 +129,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 //使用后置摄像头
                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-
-                // Unbind use cases before rebinding
-                cameraProvider.unbindAll()
-                camera = cameraProvider?.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageCapture, videoCapture)
                 // Need to bind the lifecycle of cameras to the lifecycle owner
                 // This will be handled in the Fragment by observing previewViewProvider LiveData
-//                _previewViewProvider.postValue(PreviewViewProvider(preview, videoCaptureTemp, cameraSelector))
+                _previewViewProvider.postValue(PreviewViewProvider(preview, imageCaptureTemp,videoCaptureTemp, cameraSelector))
             } catch (exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
@@ -148,11 +144,12 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             Log.e(TAG, "ImageCapture is not initialized")
             return
         }
-
+        Log.d(TAG, "ImageCapture is initialized：$imageCapture")
 
         // 创建文件名和存储位置
         val name = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS", Locale.US)
             .format(System.currentTimeMillis()) + ".jpg"
+        Log.d(TAG, "文件名：$name")
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
@@ -160,6 +157,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/CameraX-Photo")
             }
         }
+        Log.d(TAG, "存储位置：$contentValues")
 
         // 配置输出选项
         val outputOptions = ImageCapture.OutputFileOptions
@@ -167,7 +165,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                 contentValues)
             .build()
-
+        Log.d(TAG, "输出选项：$outputOptions")
         // 捕获图片
         imageCapture.takePicture(
             outputOptions,
@@ -190,64 +188,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 }
             }
         )
+        Log.d(TAG, "捕获图片完成")
+
     }
 
-
-    fun uploadFiles(serverUrl: String) {
-        val application = getApplication<Application>()
-        val contentResolver = application.contentResolver
-        Log.d(TAG, "uploadFiles")
-        val videoRequestBody = videoUri?.let { uri ->
-            contentResolver.openInputStream(uri)?.source()?.buffer()?.let { sourceBuffered ->
-                // 使用Okio 2.x API
-                sourceBuffered.readByteString().toRequestBody("video/mp4".toMediaTypeOrNull())
-            }
-        }
-
-        val csvRequestBody = csvUri?.let { uri ->
-            contentResolver.openInputStream(uri)?.source()?.buffer()?.let { sourceBuffered ->
-                // 使用Okio 2.x API
-                sourceBuffered.readByteString().toRequestBody("text/csv".toMediaTypeOrNull())
-            }
-        }
-
-        val multipartBody = MultipartBody.Builder()
-            .setType(MultipartBody.FORM)
-            .addFormDataPart("video", "filename.mp4", videoRequestBody!!)
-            .addFormDataPart("csv", "filename.csv", csvRequestBody!!)
-            .build()
-
-        val request = Request.Builder()
-            .url(serverUrl)
-            .post(multipartBody)
-            .build()
-
-        val client = OkHttpClient.Builder()
-            .readTimeout(60, TimeUnit.SECONDS) // 读取超时
-            .writeTimeout(60, TimeUnit.SECONDS) // 写入超时
-            .connectTimeout(60, TimeUnit.SECONDS) // 连接超时
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                // 处理请求失败情况
-                Log.d(TAG, "请求没发出: ${e.message}")
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                // 处理请求成功情况
-                if (response.isSuccessful) {
-                    // 请求成功处理，例如更新UI
-                    val responseBody = response.body?.string() // 获取字符串形式的响应体
-                    Log.d(TAG, "服务器响应: $responseBody")
-                    _uploadResult.postValue(" $responseBody")
-                } else {
-                    // 请求失败处理
-                    Log.d(TAG, "请求失败, HTTP状态码: ${response.code}, 原因: ${response.message}")
-                }
-            }
-        })
-    }
 
     fun captureVideo() {
         val currentRecording = recording
@@ -378,6 +322,63 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun uploadFiles(serverUrl: String) {
+        val application = getApplication<Application>()
+        val contentResolver = application.contentResolver
+        Log.d(TAG, "uploadFiles")
+        val videoRequestBody = videoUri?.let { uri ->
+            contentResolver.openInputStream(uri)?.source()?.buffer()?.let { sourceBuffered ->
+                // 使用Okio 2.x API
+                sourceBuffered.readByteString().toRequestBody("video/mp4".toMediaTypeOrNull())
+            }
+        }
+
+        val csvRequestBody = csvUri?.let { uri ->
+            contentResolver.openInputStream(uri)?.source()?.buffer()?.let { sourceBuffered ->
+                // 使用Okio 2.x API
+                sourceBuffered.readByteString().toRequestBody("text/csv".toMediaTypeOrNull())
+            }
+        }
+
+        val multipartBody = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("video", "filename.mp4", videoRequestBody!!)
+            .addFormDataPart("csv", "filename.csv", csvRequestBody!!)
+            .build()
+
+        val request = Request.Builder()
+            .url(serverUrl)
+            .post(multipartBody)
+            .build()
+
+        val client = OkHttpClient.Builder()
+            .readTimeout(60, TimeUnit.SECONDS) // 读取超时
+            .writeTimeout(60, TimeUnit.SECONDS) // 写入超时
+            .connectTimeout(60, TimeUnit.SECONDS) // 连接超时
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                // 处理请求失败情况
+                Log.d(TAG, "请求没发出: ${e.message}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                // 处理请求成功情况
+                if (response.isSuccessful) {
+                    // 请求成功处理，例如更新UI
+                    val responseBody = response.body?.string() // 获取字符串形式的响应体
+                    Log.d(TAG, "服务器响应: $responseBody")
+                    _uploadResult.postValue(" $responseBody")
+                } else {
+                    // 请求失败处理
+                    Log.d(TAG, "请求失败, HTTP状态码: ${response.code}, 原因: ${response.message}")
+                }
+            }
+        })
+    }
+
+
     private fun postRecordingMessage(message: String) {
         _recordingMessage.value = message
     }
@@ -413,6 +414,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
 data class PreviewViewProvider(
     val preview: Preview,
+    val imageCapture: ImageCapture,
     val videoCapture: VideoCapture<Recorder>,
     val cameraSelector: CameraSelector
 )

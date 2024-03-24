@@ -9,11 +9,15 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.Recorder
 import androidx.camera.video.VideoCapture
+import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -22,6 +26,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.example.adv2.R
 import com.example.adv2.databinding.FragmentDashboardBinding
+import com.example.adv2.function.PermissionsManager
 import com.example.adv2.ui.notifications.NotificationsFragment
 import com.example.adv2.ui.notifications.NotificationsViewModel
 
@@ -34,18 +39,49 @@ class DashboardFragment : Fragment() {
     private val binding get() = _binding!!
     private val dashboardViewModel: DashboardViewModel by activityViewModels()
     private val notificationsViewModel: NotificationsViewModel by activityViewModels()
+    private lateinit var permissionsManager: PermissionsManager
+    private lateinit var requestPermissionLauncher: ActivityResultLauncher<Array<String>>
     private val serverUrl: String = "http://116.205.128.125:8000/upload-files/"
     companion object {
         private const val TAG = "ZYZ"
         private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
     }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        //requestPermissionLauncher处理权限问题
+        permissionsManager = PermissionsManager(requireActivity())
+
+        // 初始化ActivityResultLauncher
+        requestPermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+            val granted = permissions.entries.all { it.value }
+            if (granted) {
+                // 权限被授予，继续操作
+                dashboardViewModel.registerSensorListeners()
+                dashboardViewModel.startCamera()
+            } else {
+                // 权限被拒绝，处理结果
+                // 显示一个对话框或Toast提示用户权限的重要性
+                Toast.makeText(context, "Permissions not granted by the user.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
     override fun onResume() {
         super.onResume()
-        // 重新注册传感器监听器
-        dashboardViewModel.registerSensorListeners()
-        dashboardViewModel.startCamera(this)
+        if (permissionsManager.allPermissionsGranted()) {
+            dashboardViewModel.registerSensorListeners()
+            dashboardViewModel.startCamera()
+        } else {
+            // 使用ActivityResultLauncher请求权限
+            requestPermissionLauncher.launch(
+                permissionsManager.REQUIRED_PERMISSIONS
+            )
+        }
     }
+
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
@@ -61,7 +97,7 @@ class DashboardFragment : Fragment() {
     }
     private fun setupObservers() {
         dashboardViewModel.previewViewProvider.observe(viewLifecycleOwner) { previewViewProvider ->
-            previewViewProvider?.let { bindCameraUseCases(it.preview, it.videoCapture, it.cameraSelector) }
+            previewViewProvider?.let { bindCameraUseCases(it.preview, it.imageCapture,it.videoCapture, it.cameraSelector) }
         }
 
         dashboardViewModel.recordingState.observe(viewLifecycleOwner) { isRecording ->
@@ -103,7 +139,7 @@ class DashboardFragment : Fragment() {
     }
 
 
-    private fun bindCameraUseCases(preview: Preview, videoCapture: VideoCapture<Recorder>, cameraSelector: CameraSelector) {
+    private fun bindCameraUseCases(preview: Preview,imageCapture:ImageCapture, videoCapture: VideoCapture<Recorder>, cameraSelector: CameraSelector) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
         cameraProviderFuture.addListener({
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
@@ -111,12 +147,14 @@ class DashboardFragment : Fragment() {
             try {
                 cameraProvider.unbindAll()
                 cameraProvider.bindToLifecycle(
-                    viewLifecycleOwner, cameraSelector, preview, videoCapture)
+                    viewLifecycleOwner, cameraSelector, preview,imageCapture, videoCapture)
             } catch(exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
         }, ContextCompat.getMainExecutor(requireContext()))
     }
+
+
 
     override fun onDestroyView() {
         super.onDestroyView()
