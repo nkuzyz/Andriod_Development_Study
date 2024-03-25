@@ -6,6 +6,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
@@ -40,6 +41,15 @@ class NotificationsViewModel (application: Application) : AndroidViewModel(appli
     // 如果需要，也可以提供一个获取当前值的方法
     fun getLastUploadResult(): String? = _lastUploadResult
 
+    private var lastImageAzimuth:Pair<Uri?,Float?>? = null
+    fun updateLastImageAzimuth(uri: Uri?, azimuth: Float?) {
+        lastImageAzimuth = Pair(uri, azimuth)
+    }
+    // 获取 lastImageAzimuth 的当前值
+    fun getLastImageAzimuth(): Pair<Uri?, Float?>? = lastImageAzimuth
+
+
+
     private val sensorManagerHelper = SensorManagerHelper(application)
     private val sensorManager = application.getSystemService(Application.SENSOR_SERVICE) as SensorManager
     private val accelerometerValues = FloatArray(3)
@@ -72,6 +82,19 @@ class NotificationsViewModel (application: Application) : AndroidViewModel(appli
                 LocalDateTime.now(),
                 false
             )
+        val updatedList = _messages.value.orEmpty().toMutableList()
+        updatedList.add(newMessage)
+        _messages.value = updatedList
+    }
+
+    fun addImageMessage(){
+        val newMessage = Message(
+            "我添加了一张图片",
+            getUser(),
+            getAssistant(),
+            LocalDateTime.now(),
+            true
+        )
         val updatedList = _messages.value.orEmpty().toMutableList()
         updatedList.add(newMessage)
         _messages.value = updatedList

@@ -36,6 +36,7 @@ import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.MediatorLiveData
 import com.example.adv2.SharedViewModel
 import com.example.adv2.function.SensorManagerHelper
 import kotlinx.coroutines.Dispatchers
@@ -94,10 +95,35 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     //录像的时候
     private var videoUri: Uri ?= null
     private var csvUri:Uri?=null
+//
+//    //拍照的时候
+//    private val _imageUri = MutableLiveData<Uri?>()
+//    private val _azimuth = MutableLiveData<Float?>()
+//    val imageAzimuth: LiveData<Pair<Uri?, Float?>> = MediatorLiveData<Pair<Uri?, Float?>>().apply {
+//        var lastUri: Uri? = null
+//        var lastAzimuth: Float? = null
+//
+//        fun update() {
+//            this.value = Pair(lastUri, lastAzimuth)
+//        }
+//
+//        addSource(_imageUri) { uri ->
+//            lastUri = uri
+//            update()
+//        }
+//        addSource(_azimuth) { azimuth ->
+//            lastAzimuth = azimuth
+//            update()
+//        }
+//    }
+    private val _imageAzimuthData = MutableLiveData<ImageAzimuthData>()
+    val imageAzimuthData: LiveData<ImageAzimuthData> = _imageAzimuthData
 
-    //拍照的时候
-    private var imageUri: Uri?= null
-    private var Azimuth:Float ?= null
+    // 提供一个方法来同时更新图像 URI 和方位角
+    fun updateImageAzimuthData(uri: Uri?, azimuth: Float?) {
+        _imageAzimuthData.postValue(ImageAzimuthData(uri, azimuth))
+    }
+
 
     private val _uploadResult = MutableLiveData<String>()
     val uploadResult: LiveData<String> = _uploadResult
@@ -176,13 +202,14 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                     val savedUri = output.savedUri ?: return
-                    imageUri = savedUri
-                    // 在这里记录方位角
                     val angle = caculateAzimuth(accelerometerValues,magneticValues)
-                    Azimuth = angle[0].toFloat()
+
+                    updateImageAzimuthData(savedUri,angle[0].toFloat())
+//                    _imageUri.postValue(savedUri)
+//                    _azimuth.postValue(angle[0].toFloat())
 
                     // 可以选择更新 UI 或进行其他操作
-                    val imageMsg = "Image saved: $savedUri"+"Azimuth: $Azimuth"
+                    val imageMsg = "Image saved: $savedUri"+"；Azimuth: ${angle[0].toFloat()}"
                     Log.d(TAG, imageMsg)
                     postRecordingMessage(imageMsg)
                 }
@@ -421,5 +448,9 @@ data class PreviewViewProvider(
     val imageCapture: ImageCapture,
     val videoCapture: VideoCapture<Recorder>,
     val cameraSelector: CameraSelector
+)
+data class ImageAzimuthData(
+    val imageUri: Uri? = null,
+    val azimuth: Float? = null
 )
 

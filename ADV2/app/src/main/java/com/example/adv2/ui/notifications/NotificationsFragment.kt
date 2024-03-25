@@ -60,6 +60,20 @@ class NotificationsFragment : Fragment() {
                 notificationsViewModel.updateLastUploadResult(result)
             }
         }
+
+        dashboardViewModel.imageAzimuthData.observe(viewLifecycleOwner){
+                data ->
+            // 检查是否有新的URI和方位角信息，并与之前的信息进行比较
+            val lastImageAzimuth = notificationsViewModel.getLastImageAzimuth()
+            if (lastImageAzimuth?.first != data.imageUri || lastImageAzimuth?.second != data.azimuth) {
+                // 更新 ViewModel 中的最后图像URI和方位角信息
+                notificationsViewModel.updateLastImageAzimuth(data.imageUri, data.azimuth)
+                // 如果需要，这里可以进行额外的UI更新或其他逻辑处理
+                notificationsViewModel.addImageMessage()
+                // 例如，展示新图像和方位角信息
+                Log.d(TAG, "dashboardViewModel: URI=${data.imageUri}, Azimuth=${data.azimuth}")
+            }
+        }
 //        Log.d(TAG, "观察者回调触发，收到新值: $dashboardViewModel.uploadResult")
 
     }
