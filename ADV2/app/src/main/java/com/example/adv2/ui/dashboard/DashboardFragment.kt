@@ -43,7 +43,7 @@ class DashboardFragment : Fragment() {
     private val notificationsViewModel: NotificationsViewModel by activityViewModels()
     private lateinit var permissionsManager: PermissionsManager
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<Array<String>>
-    private val serverUrl: String = "http://116.205.128.125:8000/upload-files/"
+    private val serverUrl: String = "http://116.205.128.125:8000/upload-videos/"
 
 //    private lateinit var cameraExecutor: ExecutorService
     companion object {
