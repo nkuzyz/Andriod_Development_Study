@@ -14,15 +14,22 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.adv2.function.SensorManagerHelper
 import com.example.adv2.model.Message
+import com.example.adv2.ui.dashboard.DashboardViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.FormBody
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import okio.Okio
+import okio.buffer
+import okio.source
 import java.io.IOException
 import java.time.LocalDateTime
 import java.util.concurrent.TimeUnit
@@ -47,6 +54,8 @@ class NotificationsViewModel (application: Application) : AndroidViewModel(appli
     }
     // 获取 lastImageAzimuth 的当前值
     fun getLastImageAzimuth(): Pair<Uri?, Float?>? = lastImageAzimuth
+
+    private var _justAddImage:Boolean?=false
 
 
 
@@ -85,6 +94,7 @@ class NotificationsViewModel (application: Application) : AndroidViewModel(appli
         val updatedList = _messages.value.orEmpty().toMutableList()
         updatedList.add(newMessage)
         _messages.value = updatedList
+
     }
 
     fun addImageMessage(){
@@ -98,6 +108,7 @@ class NotificationsViewModel (application: Application) : AndroidViewModel(appli
         val updatedList = _messages.value.orEmpty().toMutableList()
         updatedList.add(newMessage)
         _messages.value = updatedList
+        _justAddImage = true
     }
 
     fun SendText(requestBody: RequestBody, serverUrl: String) {
@@ -175,15 +186,46 @@ class NotificationsViewModel (application: Application) : AndroidViewModel(appli
         if (angle[0]<0){
             angle[0] = angle[0]+360
         }
-        //构建消息体发送
-        val azimuth = angle[0].toFloat()
-        val requestBody = FormBody.Builder()
-            .add("azimuth", azimuth.toString())
-            .add("question", editingText)
-            .build()
-        val serverUrl = "http://116.205.128.125:8000/ask-question/"
-        SendText(requestBody = requestBody, serverUrl = serverUrl)
 
+        val azimuth = angle[0].toFloat()
+
+
+        // 判断刚才是不是刚刚添加了图片
+        if (_justAddImage == true)
+        {
+            val application = getApplication<Application>()
+            val contentResolver = application.contentResolver
+            val imageRequestBody = lastImageAzimuth?.first?.let { uri ->
+                // 确保 Uri 不为 null
+                contentResolver.openInputStream(uri)?.source()?.buffer()?.let { sourceBuffered ->
+                    // 使用Okio 2.x API
+                    sourceBuffered.readByteString().toRequestBody("image/jpeg".toMediaTypeOrNull())
+                }
+            }
+
+
+            //构建消息体发送
+            val requestBody = MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("image","fimename.jpeg",imageRequestBody!!)
+                .addFormDataPart("azimuth", lastImageAzimuth?.second.toString())
+                .addFormDataPart("question", editingText)
+                .build()
+
+            val serverUrl = "http://116.205.128.125:8000/upload-image/"
+            SendText(requestBody = requestBody, serverUrl = serverUrl)
+
+            _justAddImage = false
+        }
+        else {
+            //构建消息体发送
+            val requestBody = FormBody.Builder()
+                .add("azimuth", azimuth.toString())
+                .add("question", editingText)
+                .build()
+            val serverUrl = "http://116.205.128.125:8000/ask-question/"
+            SendText(requestBody = requestBody, serverUrl = serverUrl)
+        }
 
     }
 

@@ -42,11 +42,13 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
 import com.example.adv2.R
 import com.example.adv2.model.Message
@@ -109,7 +111,8 @@ fun ChatScreen(navController: NavController,viewModel:NotificationsViewModel) {
         TopAppBar(title = getAssistant().nickname)
 
         MessageList(state = listState, messages = messages, modifier = Modifier.weight(1f))
-
+        // 在这里添加录音按钮
+//        RecorderButtonComposable()
         ChatBottomBar(navController = navController,viewModel = viewModel)
     }
 }
@@ -358,4 +361,19 @@ fun getAssistant(): User {
     return User("Assistant", R.drawable.avatar2)
 }
 
-
+//@Composable
+//fun RecorderButtonComposable() {
+//    val context = LocalContext.current
+//
+//    AndroidView(
+//        factory = { ctx ->
+//            // 使用context创建您的AudioRecorderButton
+//            AudioRecorderButton(ctx).apply {
+//                // 在这里配置您的按钮，例如设置监听器等
+//            }
+//        },
+//        update = { view ->
+//            // 如果需要，根据Compose的状态更新视图
+//        }
+//    )
+//}

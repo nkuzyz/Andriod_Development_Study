@@ -72,6 +72,7 @@ class NotificationsFragment : Fragment() {
                 notificationsViewModel.addImageMessage()
                 // 例如，展示新图像和方位角信息
                 Log.d(TAG, "dashboardViewModel: URI=${data.imageUri}, Azimuth=${data.azimuth}")
+
             }
         }
 //        Log.d(TAG, "观察者回调触发，收到新值: $dashboardViewModel.uploadResult")
